@@ -8,6 +8,16 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
+## 🌐 Live Demo
+
+**Frontend (Vercel)**: [https://sm-analytics.vercel.app](https://sm-analytics.vercel.app)  
+**Backend API (Render)**: [https://social-media-analytics-platform.onrender.com](https://social-media-analytics-platform.onrender.com)
+
+**Demo Credentials:**
+
+- **Admin**: `admin@example.com` / `admin123`
+- **User**: `user@example.com` / `user123`
+
 ## 📖 Project Overview
 
 This platform empowers social media content creators with advanced analytics capabilities similar to Buffer Analytics. It tracks engagement metrics across posts, analyzes content performance with complex aggregations, provides recommendations on optimal posting times based on historical data, and displays real-time performance dashboards.
@@ -570,29 +580,35 @@ npm run lint
 
 ## 🚀 Deployment
 
-### Backend Deployment (Railway/Render/Heroku)
+### Live Production Environment
 
-1. Set environment variables in hosting platform
-2. Ensure MongoDB Atlas connection string is configured
-3. Build and deploy:
-   ```bash
-   npm run build
-   npm start
-   ```
+This project is currently deployed and accessible:
 
-### Frontend Deployment (Vercel/Netlify)
+- **Frontend**: [https://sm-analytics.vercel.app](https://sm-analytics.vercel.app) (Vercel)
+- **Backend**: [https://social-media-analytics-platform.onrender.com](https://social-media-analytics-platform.onrender.com) (Render)
+- **Database**: MongoDB Atlas
 
-1. Connect repository to hosting platform
-2. Set build command: `npm run build`
-3. Set output directory: `dist`
-4. Add environment variables (API URL)
+### Backend Deployment (Render)
+
+1. Set environment variables in Render dashboard
+2. Configure MongoDB Atlas connection string
+3. Build command: `npm install && npm run build`
+4. Start command: `npm start`
+5. Health check path: `/health`
+
+### Frontend Deployment (Vercel)
+
+1. Connect repository to Vercel
+2. Build command: `npm run build`
+3. Output directory: `dist`
+4. Environment variable: `VITE_API_URL=https://social-media-analytics-platform.onrender.com/api`
 
 ### MongoDB Atlas Setup
 
 1. Create a cluster on MongoDB Atlas
-2. Whitelist your IP address (or 0.0.0.0/0 for all IPs)
+2. Whitelist IP addresses (or 0.0.0.0/0 for all IPs)
 3. Create database user
-4. Get connection string and add to `.env`
+4. Get connection string and add to backend `.env`
 
 ## 🎓 Architecture Decisions
 
