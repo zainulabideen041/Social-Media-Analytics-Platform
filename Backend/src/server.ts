@@ -38,6 +38,9 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/', (_req: Request, res: Response) => {
+  res.json({ message: 'Welcome to Social Media Analytics API' });
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/posts', postAnalyticsRoutes); // Post-specific analytics
