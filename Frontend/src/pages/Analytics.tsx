@@ -58,12 +58,6 @@ export default function Analytics() {
 
   const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444"];
 
-  const totalEngagement = useMemo(() => {
-    return (
-      platformPerformance?.reduce((sum, p) => sum + p.totalEngagement, 0) || 0
-    );
-  }, [platformPerformance]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}

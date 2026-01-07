@@ -9,7 +9,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CreatePostData, Platform, PostStatus } from "@/types";
+import { CreatePostData, PostStatus } from "@/types";
 import { formatDate, getPlatformIcon } from "@/utils/formatters";
 
 const postSchema = z.object({

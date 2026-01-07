@@ -25,7 +25,6 @@ import {
   formatPercentage,
   getDayName,
   getHourFormat,
-  getPlatformColor,
   getPlatformIcon,
 } from "@/utils/formatters";
 
