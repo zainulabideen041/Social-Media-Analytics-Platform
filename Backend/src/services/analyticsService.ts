@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Engagement } from '@/models/Engagement';
-import { Post } from '@/models/Post';
+import { Post, IPost } from '@/models/Post';
 import { TimeGranularity } from '@/types';
 
 interface PostPerformanceMetrics {
@@ -471,7 +471,7 @@ export class AnalyticsService {
   static async getTopPosts(
     userId?: mongoose.Types.ObjectId,
     limit: number = 10
-  ): Promise<(Post & PostMetrics)[]> {
+  ): Promise<(Partial<IPost> & PostPerformanceMetrics)[]> {
     const matchStage: any = {
       status: 'published',
     };
