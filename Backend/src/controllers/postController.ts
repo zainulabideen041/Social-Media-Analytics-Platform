@@ -60,7 +60,6 @@ export const getPosts = async (
     const skip = (pageNum - 1) * limitNum;
 
     // Build query filter
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = {};
 
     // Only show user's own posts unless admin
