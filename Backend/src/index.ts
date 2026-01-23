@@ -17,7 +17,6 @@ import postAnalyticsRoutes from '@/routes/postAnalyticsRoutes';
 dotenv.config();
 
 const app: Application = express();
-const PORT = process.env.PORT || 5000;
 
 // Security middleware
 app.use(helmet());
@@ -31,6 +30,33 @@ app.use(
 // Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Database connection flag
+let isConnected = false;
+
+// Middleware to ensure database connection
+const ensureDbConnection = async (_req: Request, res: Response, next: Function): Promise<void> => {
+  if (!isConnected) {
+    try {
+      await connectDatabase();
+      isConnected = true;
+
+      // Start cron jobs only once
+      if (process.env.NODE_ENV === 'production') {
+        startEngagementSimulation();
+        startPostScheduler();
+      }
+    } catch (error) {
+      console.error('Database connection failed:', error);
+      res.status(500).json({ error: 'Database connection failed' });
+      return;
+    }
+  }
+  next();
+};
+
+// Apply database middleware to all routes
+app.use(ensureDbConnection);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {
@@ -59,39 +85,5 @@ app.use((_req: Request, res: Response) => {
 // Global error handler (must be last)
 app.use(errorHandler);
 
-// Start server
-const startServer = async (): Promise<void> => {
-  try {
-    // Connect to database
-    await connectDatabase();
-
-    // Start cron jobs
-    startEngagementSimulation();
-    startPostScheduler();
-
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 API URL: http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Start the server
-startServer();
+// Export for Vercel serverless
+export default app;
