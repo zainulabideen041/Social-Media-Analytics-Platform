@@ -10,8 +10,7 @@
 
 ## 🌐 Live Demo
 
-**Frontend (Vercel)**: [https://sm-analytics.vercel.app](https://sm-analytics.vercel.app)  
-**Backend API (Render)**: [https://social-media-analytics-platform.onrender.com](https://social-media-analytics-platform.onrender.com)
+**Frontend (Vercel)**: [https://sm-analytics.vercel.app](https://sm-analytics.vercel.app)
 
 **Demo Credentials:**
 
@@ -450,26 +449,22 @@ Where:
 ## 🔒 Security Measures
 
 1. **Authentication**:
-
    - Bcrypt password hashing (12 rounds)
    - JWT access tokens (15 min expiry)
    - JWT refresh tokens (7 day expiry)
    - Secure token storage
 
 2. **Authorization**:
-
    - Role-based access control (RBAC)
    - Resource ownership verification
    - Protected routes based on roles
 
 3. **Input Validation**:
-
    - Zod schema validation for all requests
    - Sanitization to prevent NoSQL injection
    - Date range and query parameter validation
 
 4. **Rate Limiting**:
-
    - 5 requests per 15 minutes on auth endpoints
    - Prevents brute force attacks
 
@@ -674,21 +669,18 @@ This project is currently deployed and accessible:
 ## 🔮 Future Improvements
 
 1. **Advanced Analytics**:
-
    - Sentiment analysis on post content
    - Hashtag performance tracking
    - Audience demographics analysis
    - Competitor benchmarking
 
 2. **Performance Enhancements**:
-
    - Implement Redis for caching
    - Add read replicas for MongoDB
    - Implement GraphQL for flexible queries
    - Add query result pagination for large datasets
 
 3. **Features**:
-
    - Real-time updates with Socket.io
    - CSV/PDF export functionality
    - Advanced filtering and saved filters
@@ -696,7 +688,6 @@ This project is currently deployed and accessible:
    - A/B testing for post content
 
 4. **DevOps**:
-
    - Docker containerization
    - CI/CD pipeline with GitHub Actions
    - Comprehensive test coverage (>80%)
