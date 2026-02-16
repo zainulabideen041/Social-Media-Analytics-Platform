@@ -392,22 +392,72 @@ export class AnalyticsService {
           preserveNullAndEmptyArrays: true,
         },
       },
+      // FIRST GROUPING: Calculate metrics PER POST
+      {
+        $group: {
+          _id: '$_id',
+          platform: { $first: '$platform' },
+          postLikes: { $sum: '$engagements.metrics.likes' },
+          postComments: { $sum: '$engagements.metrics.comments' },
+          postShares: { $sum: '$engagements.metrics.shares' },
+          postClicks: { $sum: '$engagements.metrics.clicks' },
+          postImpressions: { $sum: '$engagements.metrics.impressions' },
+        },
+      },
+      // PROJECTION: Calculate rates and scores PER POST
+      {
+        $project: {
+          platform: 1,
+          postEngagement: { $add: ['$postLikes', '$postComments', '$postShares'] },
+          postImpressions: 1,
+          postClicks: 1,
+          postShares: 1,
+        },
+      },
+      {
+        $project: {
+          platform: 1,
+          postEngagement: 1,
+          engagementRate: {
+            $cond: [
+              { $gt: ['$postImpressions', 0] },
+              { $multiply: [{ $divide: ['$postEngagement', '$postImpressions'] }, 100] },
+              0,
+            ],
+          },
+          clickThroughRate: {
+            $cond: [
+              { $gt: ['$postImpressions', 0] },
+              { $multiply: [{ $divide: ['$postClicks', '$postImpressions'] }, 100] },
+              0,
+            ],
+          },
+          postShares: 1,
+        },
+      },
+      // Calculate Performance Score per post: ER * 0.4 + CTR * 0.3 + Shares * 0.3
+      {
+        $project: {
+          platform: 1,
+          postEngagement: 1,
+          engagementRate: 1,
+          performanceScore: {
+            $add: [
+              { $multiply: ['$engagementRate', 0.4] },
+              { $multiply: ['$clickThroughRate', 0.3] },
+              { $multiply: ['$postShares', 0.3] },
+            ],
+          },
+        },
+      },
+      // SECOND GROUPING: Aggregate by PLATFORM
       {
         $group: {
           _id: '$platform',
           totalPosts: { $sum: 1 },
-          totalEngagement: {
-            $sum: {
-              $add: [
-                '$engagements.metrics.likes',
-                '$engagements.metrics.comments',
-                '$engagements.metrics.shares',
-              ],
-            },
-          },
-          totalImpressions: { $sum: '$engagements.metrics.impressions' },
-          totalClicks: { $sum: '$engagements.metrics.clicks' },
-          totalShares: { $sum: '$engagements.metrics.shares' },
+          totalEngagement: { $sum: '$postEngagement' },
+          averageEngagementRate: { $avg: '$engagementRate' },
+          averagePerformanceScore: { $avg: '$performanceScore' },
         },
       },
       {
@@ -415,42 +465,8 @@ export class AnalyticsService {
           platform: '$_id',
           totalPosts: 1,
           totalEngagement: 1,
-          averageEngagementRate: {
-            $cond: [
-              { $gt: ['$totalImpressions', 0] },
-              { $multiply: [{ $divide: ['$totalEngagement', '$totalImpressions'] }, 100] },
-              0,
-            ],
-          },
-          averagePerformanceScore: {
-            $add: [
-              {
-                $multiply: [
-                  {
-                    $cond: [
-                      { $gt: ['$totalImpressions', 0] },
-                      { $multiply: [{ $divide: ['$totalEngagement', '$totalImpressions'] }, 100] },
-                      0,
-                    ],
-                  },
-                  0.4,
-                ],
-              },
-              {
-                $multiply: [
-                  {
-                    $cond: [
-                      { $gt: ['$totalImpressions', 0] },
-                      { $multiply: [{ $divide: ['$totalClicks', '$totalImpressions'] }, 100] },
-                      0,
-                    ],
-                  },
-                  0.3,
-                ],
-              },
-              { $multiply: ['$totalShares', 0.3] },
-            ],
-          },
+          averageEngagementRate: { $round: ['$averageEngagementRate', 2] },
+          averagePerformanceScore: { $round: ['$averagePerformanceScore', 2] },
         },
       },
       {
@@ -458,13 +474,7 @@ export class AnalyticsService {
       },
     ]);
 
-    return result.map((item) => ({
-      platform: item.platform,
-      totalPosts: item.totalPosts,
-      totalEngagement: item.totalEngagement,
-      averageEngagementRate: parseFloat(item.averageEngagementRate.toFixed(2)),
-      averagePerformanceScore: parseFloat(item.averagePerformanceScore.toFixed(2)),
-    }));
+    return result as PlatformPerformance[];
   }
 
   // Get top performing posts

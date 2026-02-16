@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IAnalyticsCache extends Document {
   cacheKey: string;
@@ -18,7 +18,7 @@ const analyticsCacheSchema = new Schema<IAnalyticsCache>(
     },
     userId: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
       index: true,
     },
@@ -29,18 +29,17 @@ const analyticsCacheSchema = new Schema<IAnalyticsCache>(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
-  },
+  }
 );
 
 // TTL index - automatically delete expired cache entries
 analyticsCacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const AnalyticsCache = mongoose.model<IAnalyticsCache>(
-  "AnalyticsCache",
-  analyticsCacheSchema,
+  'AnalyticsCache',
+  analyticsCacheSchema
 );
