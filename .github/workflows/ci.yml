@@ -101,12 +101,27 @@ jobs:
           scanner="$RUNNER_TEMP/gitleaks"
           flags=(--config "$config" --gitleaks-ignore-path "$RUNNER_TEMP" --ignore-gitleaks-allow --redact=100 --no-banner)
           result=0
-          "$scanner" dir "${flags[@]}" . || result=1
+          "$scanner" dir "${flags[@]}" --report-format json \
+            --report-path "$RUNNER_TEMP/files-findings.json" . || result=1
           history="$HEAD_SHA"
           if [[ -n "$BASE_SHA" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             history="$BASE_SHA..$HEAD_SHA"
           fi
-          "$scanner" git "${flags[@]}" --log-opts="$history" . || result=1
+          "$scanner" git "${flags[@]}" --log-opts="$history" --report-format json \
+            --report-path "$RUNNER_TEMP/commit-findings.json" . || result=1
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          for scope in ("files", "commit"):
+              report = Path(os.environ["RUNNER_TEMP"]) / f"{scope}-findings.json"
+              if report.is_file():
+                  for finding in json.loads(report.read_text(encoding="utf-8")) or []:
+                      location = json.dumps(finding["File"], ensure_ascii=True)
+                      print(f"{scope}: {finding['RuleID']} at {location}:{finding['StartLine']}")
+                  report.unlink()
+          PY
           exit "$result"
 
   project-checks:
