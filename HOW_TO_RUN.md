@@ -97,11 +97,11 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 # Get Optimal Times (use token from login)
 curl -X GET http://localhost:5000/api/analytics/optimal-times \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 
 # Get Dashboard Overview
 curl -X GET http://localhost:5000/api/analytics/dashboard/overview \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
 ---
