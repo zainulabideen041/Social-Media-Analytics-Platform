@@ -1,0 +1,168 @@
+name: CI and delivery
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-checks:
+    name: PR and commit checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check PR title, commit titles, and whitespace
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+
+          subject = re.compile(
+              r"(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)"
+              r"(?:\([a-zA-Z0-9._/-]+\))?!?: \S.*"
+          )
+          event = os.environ
+          commit_range = f"{event['BASE_SHA']}..{event['HEAD_SHA']}"
+          errors = []
+          if not subject.fullmatch(event["PR_TITLE"]):
+              errors.append("Use a Conventional Commit PR title, e.g. ci: add build checks.")
+
+          commits = subprocess.check_output(
+              ["git", "log", "--no-merges", "--format=%h%x09%s", commit_range],
+              text=True,
+              encoding="utf-8",
+              errors="replace",
+          )
+          for line in commits.split("\n"):
+              if not line:
+                  continue
+              sha, title = line.split("\t", 1)
+              if not subject.fullmatch(title):
+                  errors.append(f"Commit {sha} needs a Conventional Commit title.")
+
+          if errors:
+              raise SystemExit("\n".join(errors))
+          PY
+          git diff --check "$BASE_SHA...$HEAD_SHA"
+      - name: Lint workflow syntax
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --retry 3 \
+            -o actionlint.tgz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tgz' | sha256sum --check
+          tar -xzf actionlint.tgz actionlint
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/actionlint" -color
+
+  secret-scan:
+    name: Secret exposure scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install pinned Gitleaks
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --retry 3 \
+            -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz' | sha256sum --check
+          tar -xzf gitleaks.tgz gitleaks
+      - name: Scan checked-out files and commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # Use upstream rules so repository config cannot suppress findings.
+          config="$RUNNER_TEMP/gitleaks.toml"
+          printf '[extend]\nuseDefault = true\n' > "$config"
+          scanner="$RUNNER_TEMP/gitleaks"
+          flags=(--config "$config" --gitleaks-ignore-path "$RUNNER_TEMP" --ignore-gitleaks-allow --redact=100 --no-banner)
+          result=0
+          "$scanner" dir "${flags[@]}" --report-format json \
+            --report-path "$RUNNER_TEMP/files-findings.json" . || result=1
+          history="$HEAD_SHA"
+          if [[ -n "$BASE_SHA" ]] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            history="$BASE_SHA..$HEAD_SHA"
+          fi
+          "$scanner" git "${flags[@]}" --log-opts="$history" --report-format json \
+            --report-path "$RUNNER_TEMP/commit-findings.json" . || result=1
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          for scope in ("files", "commit"):
+              report = Path(os.environ["RUNNER_TEMP"]) / f"{scope}-findings.json"
+              if report.is_file():
+                  for finding in json.loads(report.read_text(encoding="utf-8")) or []:
+                      location = json.dumps(finding["File"], ensure_ascii=True)
+                      print(f"{scope}: {finding['RuleID']} at {location}:{finding['StartLine']}")
+                  report.unlink()
+          PY
+          exit "$result"
+
+  project-checks:
+    name: Build API and frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [repository-checks, secret-scan]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Build backend
+        working-directory: Backend
+        run: |
+          npm ci
+          npm test --if-present
+          npm run build
+      - name: Build frontend
+        working-directory: Frontend
+        run: |
+          npm ci
+          npm test --if-present
+          npm run build
+      - name: Deliver validated artifact
+        if: >-
+          github.event_name != 'pull_request' &&
+          github.ref_name == github.event.repository.default_branch &&
+          needs.repository-checks.result == 'success' &&
+          needs.secret-scan.result == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: social-media-analytics-build
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            Backend/dist/
+            Backend/package.json
+            Backend/package-lock.json
+            Frontend/dist/
